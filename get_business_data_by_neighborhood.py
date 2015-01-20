@@ -96,8 +96,8 @@ def convert_response_to_dataframe(response):
     for business in response['businesses']:
         if business['is_closed'] is False:
             b_id = business['id']
-            b_name_dict[b_id] = str(business['name'])
-            b_address_dict[b_id] = str(business['location']['address'][0])
+            b_name_dict[b_id] = business['name'].encode('utf-8')
+            b_address_dict[b_id] = business['location']['address'][0].encode('utf-8')
             b_city_dict[b_id] = business['location']['city']
             b_state_dict[b_id] = business['location']['state_code']
             b_postal_code_dict[b_id] = business['location']['postal_code']
