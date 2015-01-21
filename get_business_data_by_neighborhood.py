@@ -96,8 +96,8 @@ def convert_response_to_dataframe(response):
     for business in response['businesses']:
         if business['is_closed'] is False:
             b_id = business['id']
-            b_name_dict[b_id] = business['name'].encode('utf-8')
-            b_address_dict[b_id] = business['location']['address'][0].encode('utf-8')
+            b_name_dict[b_id] = business['name']
+            b_address_dict[b_id] = business['location']['address'][0]
             b_city_dict[b_id] = business['location']['city']
             b_state_dict[b_id] = business['location']['state_code']
             b_postal_code_dict[b_id] = business['location']['postal_code']
@@ -142,7 +142,7 @@ if __name__=='__main__':
         business_df = convert_response_to_dataframe(response)
 
         df_filename = 'processed_data/{}_{}_sort{}_offset{}_{}.csv'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)     
-        business_df.to_csv(df_filename, index_label='Yelp ID')
+        business_df.to_csv(df_filename, index_label='Yelp ID', encoding='utf-8')
 
     except urllib2.HTTPError as error:
         sys.exit('Encountered HTTP error {0}. Abort program.'.format(error.code))
