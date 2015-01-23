@@ -114,30 +114,33 @@ def convert_response_to_dataframe(response):
     )
     return business_df
 
+def main():
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument('-q', '--term', dest='term', default=DEFAULT_TERM, type=str, help='Search term (default: %(default)s)')
+        parser.add_argument('-l', '--location', dest='location', default=DEFAULT_LOCATION, type=str, help='Search location (default: %(default)s)')
+        parser.add_argument('-r', '--radius_filter', dest='radius_filter', default=DEFAULT_RADIUS_FILTER, type=int, help='Search radius filter (default: %(default)s)')
+        parser.add_argument('-s', '--sort', dest='sort', default=DEFAULT_SORT, type=int, help='Sort value (default: %(default)s)')
+        parser.add_argument('-o', '--offset', dest='offset', default=DEFAULT_OFFSET, type=int, help='Offset value (default: %(default)s)')
+        input_values = parser.parse_args()
+
+        try:
+            response = search(input_values.term, input_values.location, input_values.radius_filter, input_values.offset, input_values.sort)
+
+            timestamp = str(int(time.time()))        
+            json_filename = 'json/{}_{}_sort{}_offset{}_{}.json'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)
+
+            with open(json_filename,'w') as f:
+                f.write(json.dumps(response, indent=4, separators=(',', ': ')))
+
+            business_df = convert_response_to_dataframe(response)
+
+            df_filename = 'processed_data/{}_{}_sort{}_offset{}_{}.csv'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)     
+            business_df.to_csv(df_filename, index_label='Yelp ID', encoding='utf-8')
+
+        except urllib2.HTTPError as error:
+            sys.exit('Encountered HTTP error {0}. Abort program.'.format(error.code))
+
+
 if __name__=='__main__':
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-q', '--term', dest='term', default=DEFAULT_TERM, type=str, help='Search term (default: %(default)s)')
-    parser.add_argument('-l', '--location', dest='location', default=DEFAULT_LOCATION, type=str, help='Search location (default: %(default)s)')
-    parser.add_argument('-r', '--radius_filter', dest='radius_filter', default=DEFAULT_RADIUS_FILTER, type=int, help='Search radius filter (default: %(default)s)')
-    parser.add_argument('-s', '--sort', dest='sort', default=DEFAULT_SORT, type=int, help='Sort value (default: %(default)s)')
-    parser.add_argument('-o', '--offset', dest='offset', default=DEFAULT_OFFSET, type=int, help='Offset value (default: %(default)s)')
-    input_values = parser.parse_args()
-
-    try:
-        response = search(input_values.term, input_values.location, input_values.radius_filter, input_values.offset, input_values.sort)
-
-        timestamp = str(int(time.time()))        
-        json_filename = 'json/{}_{}_sort{}_offset{}_{}.json'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)
-
-        with open(json_filename,'w') as f:
-            f.write(json.dumps(response, indent=4, separators=(',', ': ')))
-
-        business_df = convert_response_to_dataframe(response)
-
-        df_filename = 'processed_data/{}_{}_sort{}_offset{}_{}.csv'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)     
-        business_df.to_csv(df_filename, index_label='Yelp ID', encoding='utf-8')
-
-    except urllib2.HTTPError as error:
-        sys.exit('Encountered HTTP error {0}. Abort program.'.format(error.code))
-
+    main()
