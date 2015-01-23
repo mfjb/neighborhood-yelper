@@ -38,9 +38,6 @@ def request(host, path, url_params=None):
     url_params = url_params or {}
     url = 'http://{0}{1}?'.format(host, path)
     
-    print
-    print 'DEBUG: url_params are {}'.format(str(url_params))
-
     consumer = oauth2.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
     oauth_request = oauth2.Request(method="GET", url=url, parameters=url_params)
  
@@ -56,9 +53,6 @@ def request(host, path, url_params=None):
     oauth_request.sign_request(oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
     signed_url = oauth_request.to_url()
     
-    print 
-    print 'DEBUG: signed url is {}'.format(str(signed_url))
-
     print 'Querying {0} ...'.format(url)
 
     conn = urllib2.urlopen(signed_url, None)
