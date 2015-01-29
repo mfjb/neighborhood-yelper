@@ -22,3 +22,4 @@ The following parameters are supported:
 |-r |--radius_filter |Allowed radius around neighborhood (meters) |
 |-s |--sort          |Sort by Best Match, distance, highest rated (0, 1, 2) |
 |-o |--offset        |Offset listed results |
+|-Q |--term_file     |File containing search terms, one on each line |
