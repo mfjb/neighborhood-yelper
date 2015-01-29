@@ -8,6 +8,7 @@ import sys
 
 API_HOST = 'api.yelp.com'
 DEFAULT_TERM = ''
+DEFAULT_TERM_FILE = 'default.terms'
 DEFAULT_LOCATION = 'Woodstock Portland OR'
 DEFAULT_RADIUS_FILTER = 3000
 DEFAULT_OFFSET = 0
@@ -91,16 +92,31 @@ def convert_response_to_dataframe(response):
         if business['is_closed'] is False:
             b_id = business['id']
             b_name_dict[b_id] = business['name']
-            b_address_dict[b_id] = business['location']['address'][0]
-            b_city_dict[b_id] = business['location']['city']
+
+            if 'address' in business['location']:
+                b_address_dict[b_id] = ', '.join(business['location']['address'])
+            else:
+                b_address_dict[b_id] = None
+
+            if 'city' in business['location']:
+                b_city_dict[b_id] = business['location']['city']
+            else:
+                b_city_dict[b_id] = None
+
             b_state_dict[b_id] = business['location']['state_code']
-            b_postal_code_dict[b_id] = business['location']['postal_code']
+
+            if 'postal_code' in business['location']:
+                b_postal_code_dict[b_id] = business['location']['postal_code']
+            else:
+                b_postal_code_dict[b_id] = None
+
             b_country_dict[b_id] = business['location']['country_code']
-            display_phone = None 
-            if business.has_key('display_phone'): 
-                display_phone = business['display_phone']
-            b_phone_dict[b_id] = display_phone
-    
+
+            if 'display_phone' in business:
+                b_phone_dict[b_id] = business['display_phone']
+            else:
+                b_phone_dict[b_id] = None
+
     business_df = pd.DataFrame(
         {
             'Business Name': b_name_dict, 
@@ -114,32 +130,49 @@ def convert_response_to_dataframe(response):
     )
     return business_df
 
+def load_query_terms(term_file):
+    with open(term_file, 'r') as f:
+        query_terms = []
+        for line in f:
+            query_terms.append(line.strip('\n'))
+    return query_terms
+
 def main():
-        parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
 
-        parser.add_argument('-q', '--term', dest='term', default=DEFAULT_TERM, type=str, help='Search term (default: %(default)s)')
-        parser.add_argument('-l', '--location', dest='location', default=DEFAULT_LOCATION, type=str, help='Search location (default: %(default)s)')
-        parser.add_argument('-r', '--radius_filter', dest='radius_filter', default=DEFAULT_RADIUS_FILTER, type=int, help='Search radius filter (default: %(default)s)')
-        parser.add_argument('-s', '--sort', dest='sort', default=DEFAULT_SORT, type=int, help='Sort value (default: %(default)s)')
-        parser.add_argument('-o', '--offset', dest='offset', default=DEFAULT_OFFSET, type=int, help='Offset value (default: %(default)s)')
-        input_values = parser.parse_args()
+    parser.add_argument('-q', '--term', dest='term', default=DEFAULT_TERM, type=str, help='Search term (default: %(default)s)')
+    parser.add_argument('-l', '--location', dest='location', default=DEFAULT_LOCATION, type=str, help='Search location (default: %(default)s)')
+    parser.add_argument('-r', '--radius_filter', dest='radius_filter', default=DEFAULT_RADIUS_FILTER, type=int, help='Search radius filter (default: %(default)s)')
+    parser.add_argument('-s', '--sort', dest='sort', default=DEFAULT_SORT, type=int, help='Sort value (default: %(default)s)')
+    parser.add_argument('-o', '--offset', dest='offset', default=DEFAULT_OFFSET, type=int, help='Offset value (default: %(default)s)')
+    parser.add_argument('-Q', '--term_file', dest='term_file', default=DEFAULT_TERM_FILE, type=str, help='Query term filename (default: %(default)s)')
+    input_values = parser.parse_args()
 
-        try:
-            response = search(input_values.term, input_values.location, input_values.radius_filter, input_values.offset, input_values.sort)
+    try:
+        if input_values.term:
+            all_responses = search(input_values.term, input_values.location, input_values.radius_filter, input_values.offset, input_values.sort)
+            business_df = convert_response_to_dataframe(all_responses)
+        else:
+            terms = load_query_terms(input_values.term_file)
+            all_responses = []
+            business_df = pd.DataFrame()
+            for term in terms:
+                response = search(term, input_values.location, input_values.radius_filter, input_values.offset, input_values.sort)
+                all_responses.append(response)
+                business_df_increment = convert_response_to_dataframe(response)
+                business_df = business_df.append(business_df_increment)
 
-            timestamp = str(int(time.time()))        
-            json_filename = 'json/{}_{}_sort{}_offset{}_{}.json'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)
+        timestamp = str(int(time.time()))        
+        json_filename = 'json/{}_{}_sort{}_offset{}_{}.json'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)
 
-            with open(json_filename,'w') as f:
-                f.write(json.dumps(response, indent=4, separators=(',', ': ')))
+        with open(json_filename, 'w') as f:
+            f.write(json.dumps(all_responses, indent=4, separators=(',', ': ')))
 
-            business_df = convert_response_to_dataframe(response)
+        df_filename = 'processed_data/{}_{}_sort{}_offset{}_{}.csv'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)
+        business_df.to_csv(df_filename, index_label='Yelp ID', encoding='utf-8')
 
-            df_filename = 'processed_data/{}_{}_sort{}_offset{}_{}.csv'.format(input_values.location, input_values.term, input_values.sort, input_values.offset, timestamp)     
-            business_df.to_csv(df_filename, index_label='Yelp ID', encoding='utf-8')
-
-        except urllib2.HTTPError as error:
-            sys.exit('Encountered HTTP error {0}. Abort program.'.format(error.code))
+    except urllib2.HTTPError as error:
+        sys.exit('Encountered HTTP error {0}. Abort program.'.format(error.code))
 
 
 if __name__=='__main__':
